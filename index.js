@@ -46,7 +46,7 @@ app.post("/admin/courses/:courseId", (req, res) => {
     Object.assign(course, req.body);
     res.json({ message: "Course Updated Successfully" });
   } else {
-    res.send(403).json({ message: "Course not found" });
+    res.sendStatus(403).json({ message: "Course not found" });
   }
 });
 
@@ -60,19 +60,19 @@ app.post("/user/signup", (req, res) => {
   //User signup logic
   const user = req.body;
   USERS.push(user);
-  res.json({ message: "User Signed Successfully" });
+  res.json({ message: "User Added Successfully" });
 });
 
-app.post("/user/signin", (req, res) => {
+app.post("/user/login", (req, res) => {
   //User login logic
-  const { username, password } = req.header;
+  const { username, password } = req.headers;
   const user = USERS.find(
     (u) => u.username === username && u.password === password
   );
   if (user) {
     res.json({ message: "User logged in sucsessfuly" });
   } else {
-    res.send(403).json({ message: "User doesnot exist" });
+    res.json({ message: "User doesnot exist" });
   }
 });
 
@@ -89,13 +89,23 @@ app.post("/user/courses/:courseId", (req, res) => {
     req.user.purchasedCourses.push(courseId);
     res.json({ message: "Course purchased successfully" });
   } else {
-    res.send(403).json({ message: "Course not found" });
+    res.json({ message: "Course not found" });
   }
 });
 
 app.get("user/purchasedCourse", (req, res) => {
   //Logic to see all purchased courses
-  const purchasedCoursesIds = req.user.purchasedCourses;
+  var purchasedCourseIds = req.user.purchasedCourses;
+  var purchasedCourses = [];
+  // purchasedCoursesIds.forEach((id) => {
+  //   purchasedCourses.push(COURSES.find((c) => c.id === id));
+  // });    OR
+  for (let i = 0; i < COURSES.length; i++) {
+    if (purchasedCourseIds.indexOf(COURSES[i].id) !== -1) {
+      purchasedCourses.push(COURSES[i]);
+    }
+  }
+  res.json({ purchasedCourses });
 });
 
 app.listen(PORT, () => {
