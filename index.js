@@ -58,22 +58,44 @@ app.get("/admin/courses", (req, res) => {
 //USER ROUTES
 app.post("/user/signup", (req, res) => {
   //User signup logic
+  const user = req.body;
+  USERS.push(user);
+  res.json({ message: "User Signed Successfully" });
 });
 
 app.post("/user/signin", (req, res) => {
   //User login logic
+  const { username, password } = req.header;
+  const user = USERS.find(
+    (u) => u.username === username && u.password === password
+  );
+  if (user) {
+    res.json({ message: "User logged in sucsessfuly" });
+  } else {
+    res.send(403).json({ message: "User doesnot exist" });
+  }
 });
 
 app.get("/user/courses", (req, res) => {
   // Logic to see all courses
+  res.json(COURSES);
 });
 
 app.post("/user/courses/:courseId", (req, res) => {
   // Logic to buy a course
+  const courseId = parseInt(req.params.courseId);
+  const course = COURSES.find((c) => c.id === courseId);
+  if (course) {
+    req.user.purchasedCourses.push(courseId);
+    res.json({ message: "Course purchased successfully" });
+  } else {
+    res.send(403).json({ message: "Course not found" });
+  }
 });
 
 app.get("user/purchasedCourse", (req, res) => {
   //Logic to see all purchased courses
+  const purchasedCoursesIds = req.user.purchasedCourses;
 });
 
 app.listen(PORT, () => {
