@@ -1,4 +1,5 @@
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const app = express();
 const PORT = 3000;
 
@@ -8,29 +9,29 @@ let ADMINS = [];
 let USERS = [];
 let COURSES = [];
 
-const adminAuthentication = (req, res, next) => {
-  const { username, password } = req.headers;
+const secretKey = "S3cr3t";
 
-  const admin = ADMINS.find(
-    (a) => a.username === username && a.password === password
-  );
-  if (admin) {
-    next();
-  } else {
-    res.status(403).json({ message: "Admin authentication failed" });
-  }
+const generateJwt = (user) => {
+  const playload = {
+    username: user.username,
+  };
+  return jwt.sign(playload, secretKey, { expiresIn: "1h" });
 };
 
-const userAuthentication = (req, res, next) => {
-  const { username, password } = req.headers;
-  const user = USERS.find(
-    (u) => u.username === username && u.password === password
-  );
-  if (user) {
-    req.user = user; // Add user object to the request
-    next();
+const authenticateJwt = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const token = authHeader.split(" ")[1];
+    jwt.verify(token, secretKey, (err, user) => {
+      if (err) {
+        return res.sendStatus(403);
+      } else {
+        req.user = user;
+        next();
+      }
+    });
   } else {
-    res.status(403).json({ message: "User authentication failed" });
+    res.sendStatus(401);
   }
 };
 
