@@ -12,23 +12,23 @@ let COURSES = [];
 const secretKey = "S3cr3t";
 
 const generateJwt = (user) => {
-  const playload = {
-    username: user.username,
-  };
-  return jwt.sign(playload, secretKey, { expiresIn: "1h" });
+  const payload = { username: user.username };
+  return jwt.sign(payload, secretKey, { expiresIn: "1h" });
 };
 
 const authenticateJwt = (req, res, next) => {
   const authHeader = req.headers.authorization;
+
   if (authHeader) {
     const token = authHeader.split(" ")[1];
+
     jwt.verify(token, secretKey, (err, user) => {
       if (err) {
         return res.sendStatus(403);
-      } else {
-        req.user = user;
-        next();
       }
+
+      req.user = user;
+      next();
     });
   } else {
     res.sendStatus(401);
@@ -42,37 +42,51 @@ app.post("/admin/signup", (req, res) => {
     res.status(403).json({ message: "Admin already exists" });
   } else {
     ADMINS.push(admin);
-    res.json({ message: "Admin created successfully" });
+    const token = generateJwt(admin);
+    res.json({ message: "Admin created successfully", token });
   }
 });
 
-app.post("/admin/login", adminAuthentication, (req, res) => {
-  res.json({ message: "Logged in successfully" });
+app.post("/admin/login", (req, res) => {
+  const { username, password } = req.headers;
+  const admin = ADMINS.find(
+    (a) => a.username === username && a.password === password
+  );
+
+  if (admin) {
+    const token = generateJwt(admin);
+    res.json({ message: "Logged in successfully", token });
+  } else {
+    res.status(403).json({ message: "Admin authentication failed" });
+  }
 });
 
-app.post("/admin/courses", adminAuthentication, (req, res) => {
+app.post("/admin/courses", authenticateJwt, (req, res) => {
   const course = req.body;
-
-  course.id = Date.now(); // use timestamp as course ID
+  course.id = COURSES.length + 1;
   COURSES.push(course);
   res.json({ message: "Course created successfully", courseId: course.id });
 });
 
-app.put("/admin/courses/:courseId", adminAuthentication, (req, res) => {
+app.put("/admin/courses/:courseId", authenticateJwt, (req, res) => {
   const courseId = parseInt(req.params.courseId);
-  const course = COURSES.find((c) => c.id === courseId);
-  if (course) {
-    Object.assign(course, req.body);
+
+  const courseIndex = COURSES.findIndex((c) => c.id === courseId);
+
+  if (courseIndex > -1) {
+    const updatedCourse = { ...COURSES[courseIndex], ...req.body };
+    COURSES[courseIndex] = updatedCourse;
     res.json({ message: "Course updated successfully" });
   } else {
     res.status(404).json({ message: "Course not found" });
   }
 });
 
-app.get("/admin/courses", adminAuthentication, (req, res) => {
+app.get("/admin/courses", authenticateJwt, (req, res) => {
   res.json({ courses: COURSES });
 });
 
+//USER ROUTES
 app.post("/users/signup", (req, res) => {
   // const user = {...req.body, purchasedCourses: []};
   const user = {
