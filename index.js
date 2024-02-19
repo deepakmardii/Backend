@@ -1,26 +1,40 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const app = express();
-const fs = require("fs");
-const PORT = 3000;
 
+const PORT = 3000;
 app.use(express.json());
 
-let ADMINS = [];
-let USERS = [];
-let COURSES = [];
+// Define mongoose schemas
+const userSchema = new mongoose.Schema({
+  username: { type: String },
+  password: String,
+  purchasedCourses: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+    },
+  ],
+});
 
-try {
-  ADMINS = JSON.parse(fs.readFileSync("admins.json", "utf-8"));
-  USERS = JSON.parse(fs.readFileSync("users.json", "utf-8"));
-  COURSES = JSON.parse(fs.readFileSync("courses.json", "utf-8"));
-} catch {
-  ADMINS = [];
-  USERS = [];
-  COURSES = [];
-}
+const adminSchema = new mongoose.Schema({
+  username: String,
+  password: String,
+});
 
-console.log(ADMINS);
+const courseSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  price: Number,
+  imageLink: String,
+  published: Boolean,
+});
+
+// Define mongoose models
+const User = mongoose.model("User", userSchema);
+const Admin = mongoose.model("Admin", adminSchema);
+const Course = mongoose.model("Course", courseSchema);
 
 const secretKey = "S3cr3t";
 
@@ -46,58 +60,70 @@ const authenticateJwt = (req, res, next) => {
   }
 };
 
+//Connect to MongoDB
+mongoose.connect(
+  "mongodb+srv://deepakmardii:deepakmardi@course-app.ml7e9n6.mongodb.net/courses",
+  { useNewUrlParser: true, useUnifiedTopology: true }
+);
+
+// Admin Routes
 app.post("/admin/signup", (req, res) => {
-  const admin = req.body;
-  const existingAdmin = ADMINS.find((a) => a.username === admin.username);
-  if (existingAdmin) {
-    res.status(403).json({ message: "Admin already exists" });
-  } else {
-    const newAdmin = { username, password };
-    ADMINS.push(newAdmin);
-    fs.writeFileSync("admins.json", JSON.stringify(ADMINS));
-    const token = jwt.sign({ username, role: "admin" }, secretKey, {
-      expiresIn: "1h",
-    });
-    res.json({ message: "Admin created successfully", token });
+  //login to signup admins
+  const { username, password } = req.body;
+  function callback(admin) {
+    if (admin) {
+      res.sendStatus(403).json({ message: "Admin already exists" });
+    } else {
+      const obj = { username: username, password: password };
+      const newAdmin = new Admin(obj);
+      newAdmin.save();
+      const token = jwt.sign({ username, role: "admin" }, secretKey, {
+        expiresIn: "1h",
+      });
+      res.json({ message: "Admin created successfully", token });
+    }
   }
+  Admin.findOne({ username }).then(callback);
 });
 
-app.post("/admin/login", (req, res) => {
+app.post("/admin/login", async (req, res) => {
+  //logic to login admin
   const { username, password } = req.headers;
-  const admin = ADMINS.find(
-    (a) => a.username === username && a.password === password
-  );
+  const admin = await Admin.findOne({ username, password });
   if (admin) {
     const token = jwt.sign({ username, role: "admin" }, secretKey, {
       expiresIn: "1h",
     });
-    res.json({ message: "Logged in successfully", token });
+    res.json({ message: "Logged In successfully", token });
   } else {
-    res.status(403).json({ message: "Invalid username or password" });
+    res.sendStatus(403).json({ message: "Invalid Username or Password" });
   }
 });
 
-app.post("/admin/courses", authenticateJwt, (req, res) => {
-  const course = req.body;
-  course.id = COURSES.length + 1;
-  COURSES.push(course);
-  fs.writeFileSync("courses.json", JSON.stringify(COURSES));
+app.post("/admin/courses", authenticateJwt, async (req, res) => {
+  // logic to create a  course
+  const course = new Course(req.body);
+  await course.save();
   res.json({ message: "Course created successfully", courseId: course.id });
 });
 
-app.put("/admin/courses/:courseId", authenticateJwt, (req, res) => {
-  const course = COURSES.find((c) => c.id === parseInt(req.params.courseId));
+app.put("/admin/courses/:courseId", authenticateJwt, async (req, res) => {
+  // logic to edit a course
+  //  const courseId = parseInt(req.params.courseId);
+  const course = await Course.findByIdAndUpdate(req.params.courseId, req.body, {
+    new: true,
+  });
   if (course) {
-    Object.assign(course, req.body);
-    fs.writeFileSync("courses.json", JSON.stringify(COURSES));
     res.json({ message: "Course updated successfully" });
   } else {
-    res.status(404).json({ message: "Course not found" });
+    res.send(404).json({ message: "Course not found" });
   }
 });
 
-app.get("/admin/courses", authenticateJwt, (req, res) => {
-  res.json({ courses: COURSES });
+app.get("/admin/courses", authenticateJwt, async (req, res) => {
+  // logic to get all courses
+  const courses = await Course.find({});
+  res.json({ courses });
 });
 
 //USER ROUTES
