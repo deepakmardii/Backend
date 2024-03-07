@@ -32,9 +32,9 @@ const courseSchema = new mongoose.Schema({
 });
 
 // Define mongoose models
-const User = mongoose.model("User", userSchema);
+const USERS = mongoose.model("User", userSchema);
 const Admin = mongoose.model("Admin", adminSchema);
-const Course = mongoose.model("Course", courseSchema);
+const COURSES = mongoose.model("Course", courseSchema);
 
 const secretKey = "S3cr3t";
 
