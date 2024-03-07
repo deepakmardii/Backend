@@ -34,7 +34,7 @@ const courseSchema = new mongoose.Schema({
 // Define mongoose models
 const USERS = mongoose.model("User", userSchema);
 const Admin = mongoose.model("Admin", adminSchema);
-const COURSES = mongoose.model("Course", courseSchema);
+const Course = mongoose.model("Course", courseSchema);
 
 const secretKey = "S3cr3t";
 
@@ -159,11 +159,11 @@ app.post("/users/login", (req, res) => {
 });
 
 app.get("/users/courses", authenticateJwt, (req, res) => {
-  res.json({ courses: COURSES });
+  res.json({ courses: Course });
 });
 
 app.post("/users/courses/:courseId", authenticateJwt, (req, res) => {
-  const course = COURSES.find((c) => c.id === parseInt(req.params.courseId));
+  const course = Course.find((c) => c.id === parseInt(req.params.courseId));
   if (course) {
     const user = USERS.find((u) => u.username === req.user.username);
     if (user) {
